@@ -1,0 +1,20 @@
+#!/bin/sh
+
+rm -f ws2012.qcow2
+qemu-img create -f qcow2 ws2012.qcow2 10G
+rm -f config.iso
+mkisofs -o config.iso -r -J config
+(virsh destroy ws2012; virsh undefine ws2012) > /dev/null 2>&1
+
+virt-install -n ws2012 -r 2048 \
+	-w network=default,model=virtio \
+	--disk path=ws2012.qcow2,bus=virtio \
+	--cdrom en_windows_server_2012_r2_with_update_x64_dvd_4065220.iso \
+	--disk path=virtio-win-0.1-81.iso,device=cdrom \
+	--disk path=config.iso,device=cdrom \
+	--disk path=cloudbase.iso,device=cdrom \
+	--os-type windows \
+	--os-variant win2k8 \
+	--vnc \
+	--console pty
+
