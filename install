@@ -1,41 +1,54 @@
 #!/bin/sh
 
-PRODUCT_KEY=$(cat product.key)
 PASSWORD=$(openssl rand -base64 15)
 VIRTIO_URL=http://alt.fedoraproject.org/pub/alt/virtio-win/latest/images/virtio-win-0.1-81.iso
 VIRTIO_IMAGE=virtio-win.iso
 WINDOWS_IMAGE=en_windows_server_2012_r2_with_update_x64_dvd_4065220.iso
+TARGET_IMAGE=ws2012.qcow2
+CONFIG_IMAGE=config.iso
 
 if ! [ -f "$WINDOWS_IMAGE" ]; then
 	echo "ERROR: missing installation media ($WINDOWS_IMAGE)" >&2
 	exit 1
 fi
 
+if [ -f "product.key" ]; then
+	PRODUCT_KEY=$(cat product.key)
+fi
+
+if ! [ "$PRODUCT_KEY" ]; then
+	echo "ERROR: missing product key" >&2
+	exit 1
+fi
+
 (virsh destroy ws2012; virsh undefine ws2012) > /dev/null 2>&1
 
-rm -f ws2012.qcow2
-qemu-img create -f qcow2 ws2012.qcow2 10G
-rm -f config.iso
+echo "Creating image $TARGET_IMAGE."
+rm -f $TARGET_IMAGE
+qemu-img create -f qcow2 $TARGET_IMAGE 10G
 
 # Substitute product key in autounattend.xml file.
+echo "Rebuilding configuration image."
 configdir=$(mktemp -d configXXXXXX)
 trap "rm -rf $configdir" EXIT
 sed -e "s/INSERT-PRODUCT-KEY-HERE/$PRODUCT_KEY/g" \
 	-e "s|Passw0rd|$PASSWORD|g" \
 	config/autounattend.xml > $configdir/autounattend.xml
-mkisofs -o config.iso -r -J $configdir
+rm -f $CONFIG_IMAGE
+mkisofs -o $CONFIG_IMAGE -r -J $configdir
 rm -rf $configdir
 
 if ! [ -f $VIRTIO_IMAGE ]; then
+	echo "Fetching VirtIO drivers from $VIRTIO_URL."
 	curl -o $VIRTIO_IMAGE -sf $VIRTIO_URL
 fi
 
 exec virt-install -n ws2012 -r 2048 \
 	-w network=default,model=virtio \
-	--disk path=ws2012.qcow2,bus=virtio \
+	--disk path=$TARGET_IMAGE,bus=virtio \
 	--cdrom $WINDOWS_IMAGE \
 	--disk path=$VIRTIO_IMAGE,device=cdrom \
-	--disk path=config.iso,device=cdrom \
+	--disk path=$CONFIG_IMAGE,device=cdrom \
 	--os-type windows \
 	--os-variant win2k8 \
 	--vnc \
