@@ -221,17 +221,67 @@
           <Path>powershell -NoLogo -Command "(new-object System.Net.WebClient).DownloadFile('https://www.cloudbase.it/downloads/CloudbaseInitSetup_Beta_x64.msi', 'c:\Windows\Temp\cloudbase.msi')"</Path>
         </RunSynchronousCommand>
 
-        <!--
-             Install cloudbase-init.
-        -->
-        <RunSynchronousCommand wcm:action="add">
-          <Order>6</Order>
-          <Path>msiexec /i c:\windows\temp\cloudbase.msi /qb /l*v c:\windows\temp\cloudbase.log</Path>
-        </RunSynchronousCommand>
-
       </RunSynchronous>
 
     </component>
   </settings>
 
+  <settings pass="oobeSystem">
+    <component name="Microsoft-Windows-Shell-Setup"
+      processorArchitecture="amd64"
+      publicKeyToken="31bf3856ad364e35"
+      language="neutral"
+      versionScope="nonSxS">
+
+      <OOBE>
+        <HideEULAPage>true</HideEULAPage>
+        <ProtectYourPC>3</ProtectYourPC>
+        <NetworkLocation>Work</NetworkLocation>
+        <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
+      </OOBE>
+
+      <!--
+           Arrange to auto-login as the Administrator user when we
+           first boot.  We will use FirstLogonCommands section, below,
+           to call sysprep after performing some configuration tasks
+           (which will remove the administrator password).
+      -->
+      <UserAccounts>
+        <AdministratorPassword>
+          <Value>Passw0rd</Value>
+          <PlainText>true</PlainText>
+        </AdministratorPassword>
+      </UserAccounts>
+      <AutoLogon>
+        <Password>
+          <Value>Passw0rd</Value>
+          <PlainText>true</PlainText>
+        </Password>
+        <Enabled>true</Enabled>
+        <LogonCount>50</LogonCount>
+        <Username>Administrator</Username>
+      </AutoLogon>
+
+      <FirstLogonCommands>
+        <!--
+             install cloudbase-init (a cloud-init-alike that uses
+             metadata provided by a cloud service such as OpenStack to
+             configure the system).
+        -->
+        <SynchronousCommand wcm:action="add">
+          <CommandLine>msiexec /i c:\windows\temp\cloudbase.msi /qb /l*v c:\windows\temp\cloudbase.log LOGGINGSERIALPORTNAME=COM1</CommandLine>
+          <Order>1</Order>
+        </SynchronousCommand>
+
+        <!--
+             run sysprep to generalize the system (and shutdown)
+        -->
+        <SynchronousCommand wcm:action="add">
+          <CommandLine>c:\windows\system32\sysprep\sysprep /generalize /oobe /shutdown</CommandLine>
+          <Order>2</Order>
+        </SynchronousCommand>
+      </FirstLogonCommands>
+
+    </component>
+  </settings>
 </unattend>
