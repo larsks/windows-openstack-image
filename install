@@ -1,6 +1,7 @@
 #!/bin/sh
 
 PRODUCT_KEY=$(cat product.key)
+PASSWORD=$(openssl rand -base64 15)
 
 (virsh destroy ws2012; virsh undefine ws2012) > /dev/null 2>&1
 
@@ -11,7 +12,8 @@ rm -f config.iso
 # Substitute product key in autounattend.xml file.
 configdir=$(mktemp -d configXXXXXX)
 trap "rm -rf $configdir" EXIT
-sed "s/INSERT-PRODUCT-KEY-HERE/$PRODUCT_KEY/g" \
+sed -e "s/INSERT-PRODUCT-KEY-HERE/$PRODUCT_KEY/g" \
+	-e "s|Passw0rd|$PASSWORD|g" \
 	config/autounattend.xml > $configdir/autounattend.xml
 mkisofs -o config.iso -r -J $configdir
 rm -rf $configdir
