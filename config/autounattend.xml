@@ -1,12 +1,38 @@
 <unattend xmlns="urn:schemas-microsoft-com:unattend"
-xmlns:ms="urn:schemas-microsoft-com:asm.v3"
-xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+  xmlns:ms="urn:schemas-microsoft-com:asm.v3"
+  xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+
+  <!--
+       For documentation on components:
+
+       http://technet.microsoft.com/en-us/library/ff699038.aspx
+  -->
+
+  <settings pass="generalize">
+    <!--
+         The PersistAllDeviceInstalls setting indicates whether all plug and
+         play devices on the destination computer remain installed during the
+         generalize configuration pass.
+    -->
+    <component name="Microsoft-Windows-PnPSysprep"
+      processorArchitecture="amd64"
+      publicKeyToken="31bf3856ad364e35"
+      language="neutral"
+      versionScope="nonSxS">
+      <PersistAllDeviceInstalls>true</PersistAllDeviceInstalls>
+    </component>
+  </settings>
+
   <settings pass="windowsPE">
-    <component name="Microsoft-Windows-International-Core-WinPE" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <component name="Microsoft-Windows-International-Core-WinPE"
+      processorArchitecture="amd64"
+      publicKeyToken="31bf3856ad364e35"
+      language="neutral"
+      versionScope="nonSxS">
 
       <!--
            This hides the initial language/keyboard/etc dialog.
-           -->
+      -->
       <SetupUILanguage>
         <UILanguage>en-US</UILanguage>
       </SetupUILanguage>
@@ -25,7 +51,7 @@ xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
            the VirtIO driver disk
            (https://alt.fedoraproject.org/pub/alt/virtio-win/latest/images/bin/)
            is available as drive D:
-           -->
+      -->
       <DriverPaths>
         <PathAndCredentials wcm:action="add" wcm:keyValue="1">
           <Path>d:\win8\amd64</Path>
@@ -34,77 +60,178 @@ xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
 
     </component>
     <component name="Microsoft-Windows-Setup"
-      publicKeyToken="31bf3856ad364e35" language="neutral"
-      versionScope="nonSxS" processorArchitecture="amd64">
+      publicKeyToken="31bf3856ad364e35"
+      language="neutral"
+      versionScope="nonSxS"
+      processorArchitecture="amd64">
 
       <!--
            This accepts the EULA and installs a product key.
-           -->
+      -->
       <UserData>
         <AcceptEula>true</AcceptEula>
         <ProductKey>
           <WillShowUI>OnError</WillShowUI>
-          <Key>HDWN8-9B88F-DWHFQ-2JVJP-4RFRY</Key>
+          <Key>INSERT-PRODUCT-KEY-HERE</Key>
         </ProductKey>
       </UserData>
 
+      <!--
+          Create a partition onto which we will install Windows.
+      -->
       <DiskConfiguration>
         <WillShowUI>OnError</WillShowUI>
         <Disk wcm:action="add">
+          <!--
+               This configuration applies to disk id 0 and will
+               wipe the entire disk.
+          -->
+          <DiskID>0</DiskID>
+          <WillWipeDisk>true</WillWipeDisk>
+
+          <!--
+               Create a partition and extend it to fill the disk.
+          -->
           <CreatePartitions>
             <CreatePartition wcm:action="add">
               <Order>1</Order>
-              <Size>100</Size>
-              <Type>Primary</Type>
-            </CreatePartition>
-            <CreatePartition wcm:action="add">
-              <Order>2</Order>
               <Extend>true</Extend>
               <Type>Primary</Type>
             </CreatePartition>
           </CreatePartitions>
+
+          <!--
+               Format the partition as NTFS and apply the label
+               "System".
+          -->
           <ModifyPartitions>
             <ModifyPartition wcm:action="add">
-              <Active>true</Active>
-              <Label>Boot</Label>
               <Format>NTFS</Format>
               <Order>1</Order>
               <PartitionID>1</PartitionID>
-            </ModifyPartition>
-            <ModifyPartition wcm:action="add">
-              <Format>NTFS</Format>
-              <Order>2</Order>
-              <PartitionID>2</PartitionID>
               <Label>System</Label>
             </ModifyPartition>
           </ModifyPartitions>
-          <DiskID>0</DiskID>
-          <WillWipeDisk>true</WillWipeDisk>
         </Disk>
       </DiskConfiguration>
+
+      <!--
+           What are we going to install?
+      -->
       <ImageInstall>
         <OSImage>
           <WillShowUI>Never</WillShowUI>
-          <InstallTo>
-            <DiskID>0</DiskID>
-            <PartitionID>2</PartitionID>
-          </InstallTo>
+
+          <!--
+               Install "Windows Server 2012 R2 SERVERSTANDARDCORE"
+               from the default location.  You must have a product
+               key appropriate to this selection.
+          -->
           <InstallFrom>
             <MetaData>
               <Key>/IMAGE/Name</Key>
-              <Value>Windows Server 2012 R2 SERVERSTANDARD</Value>
+              <Value>Windows Server 2012 R2 SERVERSTANDARDCORE</Value>
             </MetaData>
           </InstallFrom>
+
+          <!--
+               Install on partition 1 of disk id 0.
+          -->
+          <InstallTo>
+            <DiskID>0</DiskID>
+            <PartitionID>1</PartitionID>
+          </InstallTo>
         </OSImage>
       </ImageInstall>
+
     </component>
   </settings>
+
   <settings pass="specialize">
     <component name="Microsoft-Windows-Shell-Setup"
       publicKeyToken="31bf3856ad364e35" language="neutral"
       versionScope="nonSxS" processorArchitecture="amd64">
-      <!-- ComputerName can contain no more than 15 characters -->
+      <!--
+           Generate a random computer name.
+      -->
       <ComputerName>*</ComputerName>
     </component>
+
+    <!--
+         Enable remote desktop connections (by setting fDenyTSConnections to
+         false).
+    -->
+    <component name="Microsoft-Windows-TerminalServices-LocalSessionManager"
+      processorArchitecture="amd64"
+      publicKeyToken="31bf3856ad364e35"
+      language="neutral"
+      versionScope="nonSxS">
+      <fDenyTSConnections>false</fDenyTSConnections>
+    </component>
+
+    <!--
+         Do not require network-level authentication before establishing RDP
+         connection.
+    -->
+    <component name="Microsoft-Windows-TerminalServices-RDP-WinStationExtensions"
+      processorArchitecture="amd64"
+      publicKeyToken="31bf3856ad364e35"
+      language="neutral"
+      versionScope="nonSxS">
+      <UserAuthentication>0</UserAuthentication>
+    </component>
+
+    <!--
+         Open the firewall for remote desktop connections.
+    -->
+    <component name="Networking-MPSSVC-Svc"
+      processorArchitecture="amd64"
+      publicKeyToken="31bf3856ad364e35"
+      language="neutral"
+      versionScope="nonSxS">
+      <FirewallGroups>
+        <FirewallGroup wcm:action="add" wcm:keyValue="RemoteDesktop">
+          <Active>true</Active>
+          <Profile>all</Profile>
+          <Group>@FirewallAPI.dll,-28752</Group>
+        </FirewallGroup>
+      </FirewallGroups>
+    </component>
+
+    <component name="Microsoft-Windows-Deployment"
+      processorArchitecture="amd64"
+      publicKeyToken="31bf3856ad364e35"
+      language="neutral" versionScope="nonSxS">
+
+      <RunSynchronous>
+
+        <!--
+             Open the firewall for ICMP traffic.
+        -->
+        <RunSynchronousCommand wcm:action="add">
+          <Order>3</Order>
+          <Path>netsh advfirewall firewall add rule name=ICMP protocol=icmpv4 dir=in action=allow</Path>
+        </RunSynchronousCommand>
+
+        <!--
+             Download the cloudbase-init package.
+        -->
+        <RunSynchronousCommand wcm:action="add">
+          <Order>5</Order>
+          <Path>powershell -NoLogo -Command "(new-object System.Net.WebClient).DownloadFile('https://www.cloudbase.it/downloads/CloudbaseInitSetup_Beta_x64.msi', 'c:\Windows\Temp\cloudbase.msi')"</Path>
+        </RunSynchronousCommand>
+
+        <!--
+             Install cloudbase-init.
+        -->
+        <RunSynchronousCommand wcm:action="add">
+          <Order>6</Order>
+          <Path>msiexec /i c:\windows\temp\cloudbase.msi /qb /l*v c:\windows\temp\cloudbase.log</Path>
+        </RunSynchronousCommand>
+
+      </RunSynchronous>
+
+    </component>
   </settings>
+
 </unattend>
