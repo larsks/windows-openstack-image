@@ -2,6 +2,14 @@
 
 PRODUCT_KEY=$(cat product.key)
 PASSWORD=$(openssl rand -base64 15)
+VIRTIO_URL=http://alt.fedoraproject.org/pub/alt/virtio-win/latest/images/virtio-win-0.1-81.iso
+VIRTIO_IMAGE=virtio-win.iso
+WINDOWS_IMAGE=en_windows_server_2012_r2_with_update_x64_dvd_4065220.iso
+
+if ! [ -f "$WINDOWS_IMAGE" ]; then
+	echo "ERROR: missing installation media ($WINDOWS_IMAGE)" >&2
+	exit 1
+fi
 
 (virsh destroy ws2012; virsh undefine ws2012) > /dev/null 2>&1
 
@@ -18,11 +26,15 @@ sed -e "s/INSERT-PRODUCT-KEY-HERE/$PRODUCT_KEY/g" \
 mkisofs -o config.iso -r -J $configdir
 rm -rf $configdir
 
+if ! [ -f $VIRTIO_IMAGE ]; then
+	curl -o $VIRTIO_IMAGE -sf $VIRTIO_URL
+fi
+
 exec virt-install -n ws2012 -r 2048 \
 	-w network=default,model=virtio \
 	--disk path=ws2012.qcow2,bus=virtio \
-	--cdrom en_windows_server_2012_r2_with_update_x64_dvd_4065220.iso \
-	--disk path=virtio-win-0.1-81.iso,device=cdrom \
+	--cdrom $WINDOWS_IMAGE \
+	--disk path=$VIRTIO_IMAGE,device=cdrom \
 	--disk path=config.iso,device=cdrom \
 	--os-type windows \
 	--os-variant win2k8 \
